@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Windows;
 using System.IO;
 namespace SWGPatcher
@@ -20,19 +21,12 @@ namespace SWGPatcher
             this.CriticalFailureEvent += (reason) =>
             {
                 MessageBox.Show("Critical failure. Shutting down. \n" + reason);
-                this.Shutdown(1);
+                doShutdown();
             };
             PatchInformation.PatchInformationLoadFailed += (reason) =>
             {
                 MessageBox.Show("Downloading patch information failed: " + reason);
-                try // this is silly.. why does it crash with InvalidOperation on shutdown?
-                {
-                    this.Shutdown(1);
-                }
-                catch (InvalidOperationException)
-                {
-                    //TODO
-                }
+                doShutdown();
                
             };
 
@@ -43,6 +37,18 @@ namespace SWGPatcher
 
             GlobalAppData.initalize(this);
             
+        }
+        private void doShutdown()
+        {
+            ThreadStart ts = delegate()
+            {
+                Dispatcher.BeginInvoke((Action)delegate()
+                {
+                    Application.Current.Shutdown();
+                });
+            };
+            Thread t = new Thread(ts);
+            t.Start();
         }
         public delegate void CriticalFailureHandler(String reason);
     }
